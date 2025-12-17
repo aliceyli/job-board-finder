@@ -1,0 +1,20 @@
+.CompanyResultsContainer {
+  border: 1px solid rgb(36, 38, 65);
+  background-color: rgb(26, 26, 54);
+  border-radius: 14px;
+  padding: 24px;
+}
+
+.CompanyResultsList {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.CompanyResultsItem {
+  border: 1px solid rgb(75, 77, 103);
+  border-radius: 14px;
+  padding: 24px;
+}

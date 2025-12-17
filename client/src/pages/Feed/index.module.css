@@ -1,0 +1,14 @@
+.JobFeedContainer {
+  display: flex;
+  gap: 12px;
+  max-height: 80vh;
+}
+
+.JobList {
+  outline: 1px solid white;
+  overflow: scroll;
+}
+
+.JobPreview {
+  outline: 1px solid white;
+}

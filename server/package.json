@@ -1,0 +1,26 @@
+{
+  "name": "job-board-finder-api",
+  "version": "1.0.0",
+  "description": "API to serve connections.csv as JSON",
+  "main": "dist/server.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "dev": "ts-node src/server.ts",
+    "migrate": "ts-node src/migrate.ts"
+  },
+  "dependencies": {
+    "csv-parse": "^6.1.0",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "pg": "^8.16.3"
+  },
+  "devDependencies": {
+    "@types/dotenv": "^6.1.1",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.7.5",
+    "@types/pg": "^8.15.6",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.4"
+  }
+}

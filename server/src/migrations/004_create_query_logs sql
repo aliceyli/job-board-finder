@@ -1,0 +1,9 @@
+-- i haven't run this migration or written any code for this yet
+CREATE TABLE IF NOT EXISTS query_logs (
+    id SERIAL PRIMARY KEY,
+    raw_query TEXT,
+    normalized_query TEXT,
+    found BOOLEAN,
+    errors TEXT[],
+    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+)

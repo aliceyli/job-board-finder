@@ -1,0 +1,2 @@
+- .env file
+- run migrations

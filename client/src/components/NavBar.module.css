@@ -1,0 +1,28 @@
+.container {
+  width: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+}
+
+.navRow {
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+a:link,
+a:visited,
+a:active {
+  color: #cbd5e1;
+  text-decoration: none;
+}
+
+a:hover {
+  color: red;
+}

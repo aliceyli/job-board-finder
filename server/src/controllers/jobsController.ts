@@ -1,0 +1,96 @@
+import { query } from "../db";
+import { Request, Response } from "express";
+import { Job } from "../model/jobs";
+
+export async function insertOneJob({
+  title,
+  companyId,
+  location,
+  url,
+  team,
+  employmentType,
+  description,
+}: {
+  title: string;
+  companyId: number;
+  location: string;
+  url: string;
+  team: string | undefined;
+  employmentType: string | undefined;
+  description: string;
+}) {
+  const addJobQuery = `INSERT INTO jobs (
+        title, 
+        company_id, 
+        location, 
+        url, 
+        team, 
+        employment_type,
+        description
+    ) 
+    values ($1,$2,$3,$4,$5,$6,$7) 
+    ON CONFLICT (url) DO UPDATE
+        SET title = EXCLUDED.title,
+            company_id = EXCLUDED.company_id,
+            location = EXCLUDED.location,
+            url = EXCLUDED.url,
+            team = EXCLUDED.team,
+            employment_type = EXCLUDED.employment_type,
+            description = EXCLUDED.description,
+            updated_at = NOW()
+    RETURNING *`;
+
+  return await query(addJobQuery, [
+    title,
+    companyId,
+    location,
+    url,
+    team,
+    employmentType,
+    description,
+  ]);
+}
+
+// export async function getAllJobs(_req: Request, res: Response) {
+//   try {
+//     const result = await query(
+//       "SELECT j.*, c.name as company_name FROM jobs j JOIN companies c ON c.id = j.company_id;"
+//     );
+//     res.json({ data: result.rows });
+//   } catch (err) {
+//     console.error("error:", err);
+//   }
+// }
+
+interface JobResult extends Job {
+  company_name: string;
+}
+
+type JobsFeedResponse = { data: JobResult[] };
+
+export async function getJobsFeed(
+  _req: Request,
+  res: Response<JobsFeedResponse>
+) {
+  // feed jobs should match preferences and should not be tagged with any label
+
+  // TO-DO: save preferences somewhere and generate the query dynamically
+  const TEST_PREFERENCE = {
+    title: ["engineer"],
+    location: ["remote", "new york"],
+  };
+
+  try {
+    const result = await query(
+      `SELECT j.*, c.name as company_name 
+      FROM jobs j 
+      JOIN companies c ON c.id = j.company_id 
+      WHERE 
+        j.title ILIKE '%engineer%' 
+        AND (j.location ILIKE '%remote%' OR j.location ILIKE '%new york%');`
+    );
+    res.json({ data: result.rows });
+  } catch (err) {
+    console.error("error:", err);
+  }
+}
