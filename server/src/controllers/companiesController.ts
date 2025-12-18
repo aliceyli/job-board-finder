@@ -122,7 +122,7 @@ async function scrapeJobBoards(company: string): Promise<CompanyResult> {
 
 export async function getAllCompanies(_req: Request, res: Response) {
   try {
-    const result = await query("SELECT * FROM companies;");
+    const result = await query("SELECT * FROM companies LIMIT 100;");
     res.json({ data: result.rows });
   } catch (err) {
     console.error("error:", err);

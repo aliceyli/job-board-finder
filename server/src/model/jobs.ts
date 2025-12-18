@@ -6,5 +6,7 @@ export interface Job {
   url: string;
   team: string | null;
   employment_type: string | null;
+  description: string;
   created_at: string;
+  updated_at: string;
 }

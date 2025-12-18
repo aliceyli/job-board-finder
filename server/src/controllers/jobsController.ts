@@ -87,7 +87,8 @@ export async function getJobsFeed(
       JOIN companies c ON c.id = j.company_id 
       WHERE 
         j.title ILIKE '%engineer%' 
-        AND (j.location ILIKE '%remote%' OR j.location ILIKE '%new york%');`
+        AND (j.location ILIKE '%remote%' OR j.location ILIKE '%new york%')
+        LIMIT 100;`
     );
     res.json({ data: result.rows });
   } catch (err) {
