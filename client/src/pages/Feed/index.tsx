@@ -46,6 +46,7 @@ export default function FeedPage() {
         {selectedJob && (
           <div className={styles.JobPreview}>
             {selectedJob.description ? (
+              /* TO-DO: consider adding DOMPurify - https://stackoverflow.com/questions/29044518/safe-alternative-to-dangerouslysetinnerhtml*/
               <div dangerouslySetInnerHTML={{ __html: selectedJob.description }} />
             ) : (
               <div>No description available</div>
