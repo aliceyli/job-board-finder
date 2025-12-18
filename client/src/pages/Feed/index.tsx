@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getJobs } from '../../lib/api';
 import { Job } from '../../types';
+import DOMPurify from 'dompurify';
 import styles from './index.module.css';
 
 export default function FeedPage() {
@@ -17,6 +18,23 @@ export default function FeedPage() {
     }
     onLoad();
   }, []);
+
+  function isEscapedHtml(input: string): boolean {
+    return input.includes('&lt;') || input.includes('&gt;') || input.includes('&quot;');
+  }
+
+  function safeDecodeHtmlEntities(input: string): string {
+    let htmlString = input;
+
+    if (isEscapedHtml(input)) {
+      const doc = new DOMParser().parseFromString(input, 'text/html');
+      htmlString = doc.documentElement.textContent ?? '';
+    }
+
+    return DOMPurify.sanitize(htmlString);
+  }
+
+  const safeHtmlDescription = safeDecodeHtmlEntities(selectedJob?.description || '');
 
   return (
     <div className="page">
@@ -45,9 +63,12 @@ export default function FeedPage() {
         </div>
         {selectedJob && (
           <div className={styles.JobPreview}>
-            {selectedJob.description ? (
-              /* TO-DO: consider adding DOMPurify - https://stackoverflow.com/questions/29044518/safe-alternative-to-dangerouslysetinnerhtml*/
-              <div dangerouslySetInnerHTML={{ __html: selectedJob.description }} />
+            {safeHtmlDescription ? (
+              <div
+                dangerouslySetInnerHTML={{
+                  __html: safeHtmlDescription,
+                }}
+              />
             ) : (
               <div>No description available</div>
             )}

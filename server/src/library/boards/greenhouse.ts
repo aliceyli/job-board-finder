@@ -1,7 +1,7 @@
 import { BoardResult } from "../../controllers/companiesController";
 
 const GREENHOUSE_API = (slug: string) =>
-  `https://boards-api.greenhouse.io/v1/boards/${slug}/jobs`;
+  `https://boards-api.greenhouse.io/v1/boards/${slug}/jobs?content=true`;
 const GREENHOUSE_PUBLIC = (slug: string) =>
   `https://job-boards.greenhouse.io/${slug}`;
 
@@ -13,6 +13,7 @@ export async function fetchGreenhouse(
   if (!res.ok) throw new Error(`Greenhouse responded with ${res.status}`);
 
   const data = await res.json();
+  console.log(data.jobs[0]);
   const jobs = (data.jobs || []).map((job: any) => ({
     title: job.title,
     location: job.location?.name || job.location || "Unspecified",

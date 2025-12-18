@@ -5,10 +5,12 @@
 }
 
 .JobList {
+  flex: 1;
   outline: 1px solid white;
   overflow: scroll;
 }
 
 .JobPreview {
+  flex: 1;
   outline: 1px solid white;
 }

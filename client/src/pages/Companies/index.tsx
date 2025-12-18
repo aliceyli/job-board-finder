@@ -40,7 +40,7 @@ export default function CompaniesPage() {
 
   return (
     <div className="page">
-      <h1>Tracked Companies</h1>
+      <h1>Browse Companies</h1>
       <input value={query} onChange={(e) => setQuery(e.target.value)}></input>
       <button onClick={onAdd}>Add Company</button>
       {error && <p>{error}</p>}

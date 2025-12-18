@@ -92,10 +92,10 @@ async function fetchAshby(slug) {
             return base;
         }
         const jobPostingJson = await jobPostingRes.json();
-        const descriptionHtml = jobPostingJson?.data?.jobPosting?.descriptionHtml;
+        const description = jobPostingJson?.data?.jobPosting?.descriptionHtml || "";
         return {
             ...base,
-            description: typeof descriptionHtml === "string" ? descriptionHtml : "",
+            description,
         };
     }));
     return { board: "Ashby", url: ASHBY_PUBLIC(slug), jobs };

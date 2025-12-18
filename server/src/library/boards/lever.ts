@@ -1,7 +1,7 @@
 import { BoardResult } from "../../controllers/companiesController";
 
 const LEVER_API = (slug: string) =>
-  `https://api.lever.co/v0/postings/${slug}?mode=json`;
+  `https://api.lever.co/v0/postings/${slug}?include=content`;
 const LEVER_PUBLIC = (slug: string) => `https://jobs.lever.co/${slug}`;
 
 export async function fetchLever(slug: string): Promise<BoardResult | null> {
@@ -18,7 +18,7 @@ export async function fetchLever(slug: string): Promise<BoardResult | null> {
     url: job.hostedUrl || job.applyUrl || job.urls?.apply || LEVER_PUBLIC(slug),
     team: job.categories?.department || "",
     employmentType: job.categories?.commitment || "",
-    description: job.content?.descriptionHtml || ""
+    description: job.description || "",
   }));
 
   return { board: "Lever", url: LEVER_PUBLIC(slug), jobs: normalized };

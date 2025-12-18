@@ -5,25 +5,7 @@ import { insertQueryLog } from "./queryLogsController";
 import { fetchGreenhouse } from "../library/boards/greenhouse";
 import { fetchAshby } from "../library/boards/ashby";
 import { fetchLever } from "../library/boards/lever";
-
-async function insertOneCompany(
-  boardUrl: string,
-  name: string,
-  slug: string,
-  board: string
-) {
-  return await query(
-    `INSERT INTO companies (name, slug, board, board_url) 
-       VALUES ($1, $2, $3, $4)
-       ON CONFLICT (board_url) DO UPDATE
-         SET slug = EXCLUDED.slug,
-             board = EXCLUDED.board,
-             name = EXCLUDED.name,
-             updated_at = NOW()
-       RETURNING *`,
-    [name || null, slug || null, board || null, boardUrl || null]
-  );
-}
+import { Company } from "../model/companies";
 
 export interface Job {
   title: string;
@@ -53,6 +35,46 @@ interface CompanyResult {
   boardUrl?: string;
   jobs: Job[];
   errors?: string[];
+}
+
+interface GetCompaniesResponse {
+  data: Company[];
+  error?: string;
+}
+
+interface SearchCompanyResponse {
+  data: CompanyJobInsertResult;
+  error?: string;
+}
+
+type CompanyJobInsertResult = Partial<Company> & {
+  jobsInserted?: number;
+  jobCount?: number;
+  percentJobsInserted?: number;
+};
+
+interface SearchCompanyRequestBody {
+  query: string;
+}
+
+async function insertOneCompany(
+  boardUrl: string,
+  name: string,
+  slug: string,
+  board: string
+): Promise<Company> {
+  const result = await query(
+    `INSERT INTO companies (name, slug, board, board_url) 
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (board_url) DO UPDATE
+         SET slug = EXCLUDED.slug,
+             board = EXCLUDED.board,
+             name = EXCLUDED.name,
+             updated_at = NOW()
+       RETURNING *`,
+    [name || null, slug || null, board || null, boardUrl || null]
+  );
+  return result.rows[0] as Company;
 }
 
 const boards: BoardFetcher[] = [
@@ -120,12 +142,17 @@ async function scrapeJobBoards(company: string): Promise<CompanyResult> {
   };
 }
 
-export async function getAllCompanies(_req: Request, res: Response) {
+export async function getAllCompanies(
+  _req: Request,
+  res: Response<GetCompaniesResponse>
+) {
   try {
     const result = await query("SELECT * FROM companies LIMIT 100;");
     res.json({ data: result.rows });
   } catch (err) {
-    console.error("error:", err);
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("error getting companies:", err);
+    res.status(500).json({ data: [], error: message });
   }
 }
 
@@ -133,17 +160,21 @@ export async function addCompanyAndJobs(companyToInsert: CompanyResult) {
   const { boardUrl, name, slug, board, jobs } = companyToInsert;
   let insertedCompany;
   let companyId;
-  let jobCount = 0;
+  let jobCount = jobs.length;
+  let jobsInserted = 0;
 
   try {
     if (!boardUrl || !slug || !board) {
       throw new Error("company board data is missing");
     }
-    const compRes = await insertOneCompany(boardUrl, name, slug, board);
-    insertedCompany = compRes.rows[0];
+    insertedCompany = await insertOneCompany(boardUrl, name, slug, board);
+    if (!insertedCompany.id) {
+      throw new Error("company id is missing");
+    }
     companyId = insertedCompany.id;
   } catch (err) {
     console.error("error inserting company:", err);
+    throw err; // stop the rest if company isn't successfully inserted
   }
 
   for (let job of jobs) {
@@ -159,38 +190,58 @@ export async function addCompanyAndJobs(companyToInsert: CompanyResult) {
         description,
       });
       const insertedJob = jobRes.rows[0];
-      if (insertedJob) {
-        jobCount++;
+      if (insertedJob.id) {
+        jobsInserted++;
+      } else {
+        throw new Error(
+          `${title} for company ${companyId} not inserted into jobs table`
+        );
       }
     } catch (err) {
       console.error(`Error inserting job: ${err}`);
     }
   }
 
-  return { ...insertedCompany, jobsInserted: jobCount };
+  return {
+    ...insertedCompany,
+    jobsInserted,
+    jobCount,
+    percentJobsInserted: jobCount === 0 ? 1 : jobsInserted / jobCount,
+  };
 }
 
-export async function searchCompany(req: Request, res: Response) {
+export async function searchCompany(
+  req: Request<{}, SearchCompanyResponse, SearchCompanyRequestBody>,
+  res: Response<SearchCompanyResponse>
+) {
   const { query } = req.body;
   const normalized_query = normalizeString(query);
-
-  // to-do: look into how to wrap this into one transaction that can be rolled back
 
   const jobBoardResult = await scrapeJobBoards(normalized_query);
   const { found, errors } = jobBoardResult;
 
-  // to-do: add company query to query_logs table
-  insertQueryLog({
+  await insertQueryLog({
     raw_query: query,
     normalized_query,
     found,
     errors: errors || [],
   });
 
-  if (found) {
+  if (!found) {
+    return res.json({
+      data: {},
+      error: `failed to find job board for ${normalized_query}`,
+    });
+  }
+
+  try {
     const companyData = await addCompanyAndJobs(jobBoardResult);
     res.json({ data: companyData });
-  } else {
-    res.json({ data: {} });
+  } catch (err) {
+    console.error(`failed to add company/jobs for ${normalized_query}: ${err}`);
+    return res.status(500).json({
+      data: {},
+      error: `failed to add company/jobs for ${normalized_query}`,
+    });
   }
 }

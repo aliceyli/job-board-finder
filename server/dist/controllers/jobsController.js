@@ -13,7 +13,7 @@ async function insertOneJob({ title, companyId, location, url, team, employmentT
         employment_type,
         description
     ) 
-    values ($1,$2,$3,$4,$5,$6) 
+    values ($1,$2,$3,$4,$5,$6,$7) 
     ON CONFLICT (url) DO UPDATE
         SET title = EXCLUDED.title,
             company_id = EXCLUDED.company_id,
@@ -47,7 +47,8 @@ async function getJobsFeed(_req, res) {
       JOIN companies c ON c.id = j.company_id 
       WHERE 
         j.title ILIKE '%engineer%' 
-        AND (j.location ILIKE '%remote%' OR j.location ILIKE '%new york%');`);
+        AND (j.location ILIKE '%remote%' OR j.location ILIKE '%new york%')
+        LIMIT 100;`);
         res.json({ data: result.rows });
     }
     catch (err) {
