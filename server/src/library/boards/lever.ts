@@ -19,7 +19,12 @@ export async function fetchLever(slug: string): Promise<BoardResult | null> {
     team: job.categories?.department || "",
     employmentType: job.categories?.commitment || "",
     description: job.description || "",
+    raw: JSON.stringify(job),
   }));
 
-  return { board: "Lever", url: LEVER_PUBLIC(slug), jobs: normalized };
+  return {
+    board: "Lever",
+    url: LEVER_PUBLIC(slug),
+    jobs: normalized,
+  };
 }

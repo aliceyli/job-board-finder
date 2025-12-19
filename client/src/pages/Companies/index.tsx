@@ -40,14 +40,17 @@ export default function CompaniesPage() {
 
   return (
     <div className="page">
-      <h1>Browse Companies</h1>
+      <h1>Search Company</h1>
       <input value={query} onChange={(e) => setQuery(e.target.value)}></input>
       <button onClick={onAdd}>Add Company</button>
       {error && <p>{error}</p>}
+
+      <h1>Browse Companies</h1>
+      <p>to-do: add a filter here</p>
       {companies ? (
         <div className={style.CompanyResultsContainer}>
           <ul className={style.CompanyResultsList}>
-            {companies.map(({ id, name, board, board_url, updated_at }) => {
+            {companies.map(({ id, name, board, board_url, updated_at, job_count }) => {
               const updatedDate = new Date(updated_at).toLocaleDateString('en-US');
               return (
                 <li key={id} className={style.CompanyResultsItem}>
@@ -59,6 +62,7 @@ export default function CompaniesPage() {
                     </span>
                   </div>
                   <div>updated {updatedDate}</div>
+                  <div>{job_count} listed jobs</div>
                 </li>
               );
             })}

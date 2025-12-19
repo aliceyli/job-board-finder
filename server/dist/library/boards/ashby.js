@@ -20,6 +20,19 @@ const ASHBY_JOB_BOARD_QUERY = `
     }
   }
 `.trim();
+const ASHBY_ORG_QUERY = `
+  query ApiOrganizationFromHostedJobsPageName(
+    $organizationHostedJobsPageName: String!
+    $searchContext: OrganizationSearchContext
+  ) {
+    organization: organizationFromHostedJobsPageName(
+      organizationHostedJobsPageName: $organizationHostedJobsPageName
+      searchContext: $searchContext
+    ) {
+      name
+    }
+  }
+`.trim();
 const ASHBY_JOB_POSTING_QUERY = `
   query ApiJobPosting(
     $organizationHostedJobsPageName: String!
@@ -34,6 +47,29 @@ const ASHBY_JOB_POSTING_QUERY = `
   }
 `.trim();
 async function fetchAshby(slug) {
+    // grab org info (name) separately
+    let orgName;
+    try {
+        const orgRes = await fetch(ASHBY_API, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                operationName: "ApiOrganizationFromHostedJobsPageName",
+                variables: {
+                    organizationHostedJobsPageName: slug,
+                    searchContext: "JobPosting",
+                },
+                query: ASHBY_ORG_QUERY,
+            }),
+        });
+        if (orgRes.ok) {
+            const orgJson = await orgRes.json();
+            orgName = orgJson?.data?.organization?.name;
+        }
+    }
+    catch (err) {
+        console.error(`Error fetching Ashby org name for ${slug}: ${err}`);
+    }
     const res = await fetch(ASHBY_API, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -98,5 +134,5 @@ async function fetchAshby(slug) {
             description,
         };
     }));
-    return { board: "Ashby", url: ASHBY_PUBLIC(slug), jobs };
+    return { companyName: orgName, board: "Ashby", url: ASHBY_PUBLIC(slug), jobs };
 }

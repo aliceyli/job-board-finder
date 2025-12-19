@@ -14,9 +14,11 @@ export interface Job {
   team?: string;
   employmentType?: string;
   description: string;
+  raw: string;
 }
 
 export interface BoardResult {
+  companyName?: string;
   board: string;
   url: string;
   jobs: Job[];
@@ -114,7 +116,7 @@ async function scrapeJobBoards(company: string): Promise<CompanyResult> {
         if (result) {
           return {
             found: true,
-            name: normalizedCompany,
+            name: result.companyName || normalizedCompany,
             slug,
             board: result.board,
             boardUrl: result.url,
@@ -147,7 +149,31 @@ export async function getAllCompanies(
   res: Response<GetCompaniesResponse>
 ) {
   try {
-    const result = await query("SELECT * FROM companies LIMIT 100;");
+    const result = await query(
+      `
+      SELECT 
+        c.id, 
+        c.name, 
+        c.board, 
+        c.board_url, 
+        c.slug, 
+        c.created_at, 
+        c.updated_at, 
+        COUNT(j.id) as job_count
+      FROM companies c 
+      LEFT JOIN jobs j ON c.id = j.company_id 
+      GROUP BY 
+        c.id, 
+        c.name, 
+        c.board, 
+        c.board_url, 
+        c.slug, 
+        c.created_at, 
+        c.updated_at
+      ORDER BY c.updated_at DESC
+      LIMIT 100;
+      `
+    );
     res.json({ data: result.rows });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -178,7 +204,7 @@ export async function addCompanyAndJobs(companyToInsert: CompanyResult) {
   }
 
   for (let job of jobs) {
-    const { title, location, url, team, employmentType, description } = job;
+    const { title, location, url, team, employmentType, description, raw } = job;
     try {
       const jobRes = await insertOneJob({
         title,
@@ -188,6 +214,7 @@ export async function addCompanyAndJobs(companyToInsert: CompanyResult) {
         team,
         employmentType,
         description,
+        raw
       });
       const insertedJob = jobRes.rows[0];
       if (insertedJob.id) {

@@ -39,7 +39,7 @@ async function getJobsFeed(_req, res) {
     // TO-DO: save preferences somewhere and generate the query dynamically
     const TEST_PREFERENCE = {
         title: ["engineer"],
-        location: ["remote", "new york"],
+        location: ["new york", "ny"],
     };
     try {
         const result = await (0, db_1.query)(`SELECT j.*, c.name as company_name 
@@ -47,7 +47,7 @@ async function getJobsFeed(_req, res) {
       JOIN companies c ON c.id = j.company_id 
       WHERE 
         j.title ILIKE '%engineer%' 
-        AND (j.location ILIKE '%remote%' OR j.location ILIKE '%new york%')
+        AND (j.location ILIKE '%ny%' OR j.location ILIKE '%new york%')
         LIMIT 100;`);
         res.json({ data: result.rows });
     }

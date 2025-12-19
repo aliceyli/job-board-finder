@@ -13,13 +13,23 @@ export async function fetchGreenhouse(
   if (!res.ok) throw new Error(`Greenhouse responded with ${res.status}`);
 
   const data = await res.json();
-  console.log(data.jobs[0]);
+  let companyName;
+  if (data.jobs.length > 0) {
+    companyName = data.jobs[0].company_name;
+  }
   const jobs = (data.jobs || []).map((job: any) => ({
     title: job.title,
     location: job.location?.name || job.location || "Unspecified",
     url: job.absolute_url || GREENHOUSE_PUBLIC(slug),
     description: job.content || "",
+    team: job.departments?.length > 0 ? job.departments[0].name : "",
+    raw: JSON.stringify(job),
   }));
 
-  return { board: "Greenhouse", url: GREENHOUSE_PUBLIC(slug), jobs };
+  return {
+    companyName,
+    board: "Greenhouse",
+    url: GREENHOUSE_PUBLIC(slug),
+    jobs,
+  };
 }

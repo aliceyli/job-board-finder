@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.fetchLever = fetchLever;
-const LEVER_API = (slug) => `https://api.lever.co/v0/postings/${slug}?mode=json`;
+const LEVER_API = (slug) => `https://api.lever.co/v0/postings/${slug}?include=content`;
 const LEVER_PUBLIC = (slug) => `https://jobs.lever.co/${slug}`;
 async function fetchLever(slug) {
     const res = await fetch(LEVER_API(slug));
@@ -18,7 +18,12 @@ async function fetchLever(slug) {
         url: job.hostedUrl || job.applyUrl || job.urls?.apply || LEVER_PUBLIC(slug),
         team: job.categories?.department || "",
         employmentType: job.categories?.commitment || "",
-        description: job.content?.descriptionHtml || ""
+        description: job.description || "",
     }));
-    return { board: "Lever", url: LEVER_PUBLIC(slug), jobs: normalized };
+    return {
+        companyName: slug,
+        board: "Lever",
+        url: LEVER_PUBLIC(slug),
+        jobs: normalized,
+    };
 }

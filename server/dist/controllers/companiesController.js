@@ -77,7 +77,29 @@ async function scrapeJobBoards(company) {
 }
 async function getAllCompanies(_req, res) {
     try {
-        const result = await (0, db_1.query)("SELECT * FROM companies LIMIT 100;");
+        const result = await (0, db_1.query)(`
+      SELECT 
+        c.id, 
+        c.name, 
+        c.board, 
+        c.board_url, 
+        c.slug, 
+        c.created_at, 
+        c.updated_at, 
+        COUNT(j.id) as job_count
+      FROM companies c 
+      LEFT JOIN jobs j ON c.id = j.company_id 
+      GROUP BY 
+        c.id, 
+        c.name, 
+        c.board, 
+        c.board_url, 
+        c.slug, 
+        c.created_at, 
+        c.updated_at
+      ORDER BY c.updated_at DESC
+      LIMIT 100;
+      `);
         res.json({ data: result.rows });
     }
     catch (err) {

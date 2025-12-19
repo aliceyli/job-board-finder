@@ -21,6 +21,20 @@ const ASHBY_JOB_BOARD_QUERY = `
   }
 `.trim();
 
+const ASHBY_ORG_QUERY = `
+  query ApiOrganizationFromHostedJobsPageName(
+    $organizationHostedJobsPageName: String!
+    $searchContext: OrganizationSearchContext
+  ) {
+    organization: organizationFromHostedJobsPageName(
+      organizationHostedJobsPageName: $organizationHostedJobsPageName
+      searchContext: $searchContext
+    ) {
+      name
+    }
+  }
+`.trim();
+
 const ASHBY_JOB_POSTING_QUERY = `
   query ApiJobPosting(
     $organizationHostedJobsPageName: String!
@@ -31,6 +45,7 @@ const ASHBY_JOB_POSTING_QUERY = `
       jobPostingId: $jobPostingId
     ) {
       descriptionHtml
+      compensationTierSummary
     }
   }
 `.trim();
@@ -49,6 +64,28 @@ interface AshbyTeam {
 }
 
 export async function fetchAshby(slug: string): Promise<BoardResult | null> {
+  let orgName: string | undefined;
+  try {
+    const orgRes = await fetch(ASHBY_API, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        operationName: "ApiOrganizationFromHostedJobsPageName",
+        variables: {
+          organizationHostedJobsPageName: slug,
+          searchContext: "JobPosting",
+        },
+        query: ASHBY_ORG_QUERY,
+      }),
+    });
+    if (orgRes.ok) {
+      const orgJson = await orgRes.json();
+      orgName = orgJson?.data?.organization?.name;
+    }
+  } catch (err) {
+    console.error(`Error fetching Ashby org name for ${slug}: ${err}`);
+  }
+
   const res = await fetch(ASHBY_API, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -91,6 +128,7 @@ export async function fetchAshby(slug: string): Promise<BoardResult | null> {
         team: job.teamId ? teamsById.get(job.teamId) : undefined,
         employmentType: job.employmentType,
         description: "",
+        raw: JSON.stringify(job),
       };
 
       const jobPostingRes = await fetch(ASHBY_API, {
@@ -124,9 +162,15 @@ export async function fetchAshby(slug: string): Promise<BoardResult | null> {
       return {
         ...base,
         description,
+        raw: JSON.stringify(job) + JSON.stringify(jobPostingJson),
       };
     })
   );
 
-  return { board: "Ashby", url: ASHBY_PUBLIC(slug), jobs };
+  return {
+    companyName: orgName,
+    board: "Ashby",
+    url: ASHBY_PUBLIC(slug),
+    jobs,
+  };
 }

@@ -10,6 +10,7 @@ export async function insertOneJob({
   team,
   employmentType,
   description,
+  raw,
 }: {
   title: string;
   companyId: number;
@@ -18,7 +19,9 @@ export async function insertOneJob({
   team: string | undefined;
   employmentType: string | undefined;
   description: string;
+  raw: string;
 }) {
+
   const addJobQuery = `INSERT INTO jobs (
         title, 
         company_id, 
@@ -77,7 +80,7 @@ export async function getJobsFeed(
   // TO-DO: save preferences somewhere and generate the query dynamically
   const TEST_PREFERENCE = {
     title: ["engineer"],
-    location: ["remote", "new york"],
+    location: ["new york", "ny"],
   };
 
   try {
@@ -87,7 +90,7 @@ export async function getJobsFeed(
       JOIN companies c ON c.id = j.company_id 
       WHERE 
         j.title ILIKE '%engineer%' 
-        AND (j.location ILIKE '%remote%' OR j.location ILIKE '%new york%')
+        AND (j.location ILIKE '%ny%' OR j.location ILIKE '%new york%')
         LIMIT 100;`
     );
     res.json({ data: result.rows });
