@@ -22,6 +22,8 @@ export async function insertOneJob({
   raw: string;
 }) {
 
+  const jobMetadata = processJobMetadata(raw)
+
   const addJobQuery = `INSERT INTO jobs (
         title, 
         company_id, 
