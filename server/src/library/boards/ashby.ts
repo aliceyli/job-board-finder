@@ -63,8 +63,7 @@ interface AshbyTeam {
   name: string;
 }
 
-export async function fetchAshby(slug: string): Promise<BoardResult | null> {
-  let orgName: string | undefined;
+async function getAshbyOrgName(slug: string): Promise<string | undefined> {
   try {
     const orgRes = await fetch(ASHBY_API, {
       method: "POST",
@@ -80,12 +79,15 @@ export async function fetchAshby(slug: string): Promise<BoardResult | null> {
     });
     if (orgRes.ok) {
       const orgJson = await orgRes.json();
-      orgName = orgJson?.data?.organization?.name;
+      return orgJson?.data?.organization?.name;
     }
   } catch (err) {
-    console.error(`Error fetching Ashby org name for ${slug}: ${err}`);
+    let errorMessage = `Error fetching Ashby org name for ${slug}: ${err}`;
+    console.error(errorMessage);
   }
+}
 
+export async function fetchAshby(slug: string): Promise<BoardResult | null> {
   const res = await fetch(ASHBY_API, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -97,7 +99,6 @@ export async function fetchAshby(slug: string): Promise<BoardResult | null> {
   });
 
   if (!res.ok) {
-    // Ashby returns 200 for misses; treat hard errors as non-fatal.
     if (res.status === 404) return null;
     throw new Error(`Ashby responded with ${res.status}`);
   }
@@ -110,6 +111,8 @@ export async function fetchAshby(slug: string): Promise<BoardResult | null> {
     throw new Error(`Ashby GraphQL error: ${message}`);
   }
 
+  const orgName = await getAshbyOrgName(slug);
+
   const jobBoard = json?.data?.jobBoard;
   if (!jobBoard || !Array.isArray(jobBoard.teams)) return null;
 
@@ -119,18 +122,23 @@ export async function fetchAshby(slug: string): Promise<BoardResult | null> {
   const jobPostings =
     (jobBoard.jobPostings as AshbyJobPosting[] | undefined) ?? [];
 
-  const jobs = await Promise.all(
-    jobPostings.map(async (job) => {
-      const base = {
-        title: job.title,
-        location: job.locationName || "Unspecified",
-        url: `${ASHBY_PUBLIC(slug)}/${job.id}`,
-        team: job.teamId ? teamsById.get(job.teamId) : undefined,
-        employmentType: job.employmentType,
-        description: "",
-        raw: JSON.stringify(job),
-      };
+  const jobs = [];
 
+  // don't run concurrently with promises.all to avoid getting rate limited
+  for (let job of jobPostings) {
+    console.log(`ashby query for job ${job.id} (${slug}) starting`);
+    const base = {
+      title: job.title,
+      location: job.locationName || "Unspecified",
+      url: `${ASHBY_PUBLIC(slug)}/${job.id}`,
+      team: job.teamId ? teamsById.get(job.teamId) : undefined,
+      employmentType: job.employmentType,
+      raw: JSON.stringify(job),
+    };
+
+    let jobPostingJson: any | null = null;
+    let description = "";
+    try {
       const jobPostingRes = await fetch(ASHBY_API, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -145,27 +153,27 @@ export async function fetchAshby(slug: string): Promise<BoardResult | null> {
       });
 
       if (!jobPostingRes.ok) {
-        if (jobPostingRes.status === 404) {
-          console.error(`could not find job ${job.id} for ${slug} on ashby`);
-        } else {
-          console.error(
-            `could not connect to ashby api to find job posting details (${jobPostingRes.status})`
-          );
-        }
-        return base;
       }
 
-      const jobPostingJson = await jobPostingRes.json();
-      const description =
-        jobPostingJson?.data?.jobPosting?.descriptionHtml || "";
+      jobPostingJson = await jobPostingRes.json();
+      description = jobPostingJson?.data?.jobPosting?.descriptionHtml || "";
+    } catch (err) {
+      console.error(
+        `ashby job ${job.id} (${slug}) description detail fetch failed: ${err}`
+      );
+    }
 
-      return {
-        ...base,
-        description,
-        raw: JSON.stringify(job) + JSON.stringify(jobPostingJson),
-      };
-    })
-  );
+    const raw = jobPostingJson
+      ? `${JSON.stringify(job)}${JSON.stringify(jobPostingJson)}`
+      : JSON.stringify(job);
+
+    jobs.push({
+      ...base,
+      description,
+      raw,
+    });
+  }
+  console.log(`ashby api pull for ${slug} done`);
 
   return {
     companyName: orgName,

@@ -21,9 +21,6 @@ export async function insertOneJob({
   description: string;
   raw: string;
 }) {
-
-  const jobMetadata = processJobMetadata(raw)
-
   const addJobQuery = `INSERT INTO jobs (
         title, 
         company_id, 
@@ -31,9 +28,10 @@ export async function insertOneJob({
         url, 
         team, 
         employment_type,
-        description
+        description, 
+        raw
     ) 
-    values ($1,$2,$3,$4,$5,$6,$7) 
+    values ($1,$2,$3,$4,$5,$6,$7,$8) 
     ON CONFLICT (url) DO UPDATE
         SET title = EXCLUDED.title,
             company_id = EXCLUDED.company_id,
@@ -42,7 +40,8 @@ export async function insertOneJob({
             team = EXCLUDED.team,
             employment_type = EXCLUDED.employment_type,
             description = EXCLUDED.description,
-            updated_at = NOW()
+            updated_at = NOW(),
+            raw = EXCLUDED.raw
     RETURNING *`;
 
   return await query(addJobQuery, [
@@ -53,6 +52,7 @@ export async function insertOneJob({
     team,
     employmentType,
     description,
+    raw,
   ]);
 }
 
