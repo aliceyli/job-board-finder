@@ -1,4 +1,5 @@
 import { BoardResult } from "../../controllers/companiesController";
+import { sleep } from "../sleep";
 
 const ASHBY_API = "https://jobs.ashbyhq.com/api/non-user-graphql";
 const ASHBY_PUBLIC = (slug: string) => `https://jobs.ashbyhq.com/${slug}`;
@@ -124,7 +125,7 @@ export async function fetchAshby(slug: string): Promise<BoardResult | null> {
 
   const jobs = [];
 
-  // don't run concurrently with promises.all to avoid getting rate limited
+  // don't run concurrently with promises.all to avoid rate limiting
   for (let job of jobPostings) {
     console.log(`ashby query for job ${job.id} (${slug}) starting`);
     const base = {
@@ -172,6 +173,8 @@ export async function fetchAshby(slug: string): Promise<BoardResult | null> {
       description,
       raw,
     });
+
+    await sleep(500); // wait between fetches to avoid rate limiting
   }
   console.log(`ashby api pull for ${slug} done`);
 
