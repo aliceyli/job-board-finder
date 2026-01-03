@@ -14,8 +14,6 @@ type Company = {
 
 export default function CompaniesPage() {
   const [companies, setCompanies] = useState<Company[]>([]);
-  const [query, setQuery] = useState<string>('');
-  const [error, setError] = useState<string>('');
 
   async function fetchCompanies() {
     const companiesData = await getCompanies();
@@ -26,25 +24,8 @@ export default function CompaniesPage() {
     fetchCompanies();
   }, []);
 
-  async function onAdd() {
-    setError('');
-    const companyData = await searchCompany({ query });
-    const { id } = companyData ?? {};
-    console.log({ companyData });
-    if (id) {
-      fetchCompanies();
-    } else {
-      setError(`"${query}" not found`);
-    }
-  }
-
   return (
     <div className="page">
-      <h1>Search Company</h1>
-      <input value={query} onChange={(e) => setQuery(e.target.value)}></input>
-      <button onClick={onAdd}>Add Company</button>
-      {error && <p>{error}</p>}
-
       <h1>Browse Companies</h1>
       <p>to-do: add a filter here</p>
       {companies ? (

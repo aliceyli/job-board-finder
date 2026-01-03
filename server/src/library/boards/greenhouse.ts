@@ -1,4 +1,4 @@
-import { BoardResult } from "../../controllers/companiesController";
+import { BoardResult } from "../scrapeJobs";
 
 const GREENHOUSE_API = (slug: string) =>
   `https://boards-api.greenhouse.io/v1/boards/${slug}/jobs?content=true`;

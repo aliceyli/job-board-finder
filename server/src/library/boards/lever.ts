@@ -1,4 +1,4 @@
-import { BoardResult } from "../../controllers/companiesController";
+import { BoardResult } from "../scrapeJobs";
 
 const LEVER_API = (slug: string) =>
   `https://api.lever.co/v0/postings/${slug}?include=content`;

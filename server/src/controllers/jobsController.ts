@@ -1,6 +1,15 @@
 import { query } from "../db";
 import { Request, Response } from "express";
-import { Job } from "../model/jobs";
+
+export interface Job {
+  title: string;
+  location: string;
+  url: string;
+  team?: string;
+  employmentType?: string;
+  description: string;
+  raw: string;
+}
 
 export async function insertOneJob({
   title,
