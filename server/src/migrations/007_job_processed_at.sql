@@ -1,0 +1,2 @@
+ALTER TABLE jobs
+ADD COLUMN IF NOT EXISTS last_processed_at TIMESTAMP;

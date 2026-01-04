@@ -1,5 +1,7 @@
 import { query } from "../db";
 import { Request, Response } from "express";
+import { JobMetadataParsedResponse } from "../library/processJobMetadata";
+import { pool } from "../db";
 
 export interface Job {
   title: string;
@@ -65,16 +67,118 @@ export async function insertOneJob({
   ]);
 }
 
-// export async function getAllJobs(_req: Request, res: Response) {
-//   try {
-//     const result = await query(
-//       "SELECT j.*, c.name as company_name FROM jobs j JOIN companies c ON c.id = j.company_id;"
-//     );
-//     res.json({ data: result.rows });
-//   } catch (err) {
-//     console.error("error:", err);
-//   }
-// }
+export async function insertOneJobMetadata(
+  job_id: number,
+  jobMetadata: JobMetadataParsedResponse | null
+) {
+  if (jobMetadata === null) {
+    return;
+  }
+
+  const {
+    level,
+    workPolicy,
+    yearsExperienceMin,
+    skillsRequired,
+    locationCities,
+    locationCountries,
+  } = jobMetadata;
+
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const filtersQuery = `
+        INSERT INTO job_filters(
+            job_id,
+            level, 
+            work_policy, 
+            years_experience_min
+        ) 
+        VALUES($1, $2, $3, $4)
+        ON CONFLICT (job_id) DO UPDATE
+        SET level = EXCLUDED.level,
+            work_policy = EXCLUDED.work_policy,
+            years_experience_min = EXCLUDED.years_experience_min
+        `;
+    if (level || workPolicy || yearsExperienceMin) {
+      await client.query(filtersQuery, [
+        job_id,
+        level,
+        workPolicy,
+        yearsExperienceMin,
+      ]);
+    }
+
+    const skills = (skillsRequired || []).filter(Boolean);
+    if (skills.length) {
+      const skillsQuery = `
+          INSERT INTO job_skills(
+              job_id,
+              skill
+          ) 
+          SELECT $1, UNNEST($2::text[])
+          ON CONFLICT (job_id, skill) DO NOTHING`;
+      await client.query(skillsQuery, [job_id, skills]);
+    }
+
+    const cities = (locationCities || []).filter(Boolean);
+    if (cities.length) {
+      const citiesQuery = `
+          INSERT INTO job_cities(
+              job_id,
+              city
+          ) 
+          SELECT $1, UNNEST($2::text[])
+          ON CONFLICT (job_id, city) DO NOTHING`;
+      await client.query(citiesQuery, [job_id, cities]);
+    }
+
+    const countries = (locationCountries || []).filter(Boolean);
+    if (countries.length) {
+      const countriesQuery = `
+          INSERT INTO job_countries(
+              job_id,
+              country
+          ) 
+          SELECT $1, UNNEST($2::text[])
+          ON CONFLICT (job_id, country) DO NOTHING`;
+      await client.query(countriesQuery, [job_id, countries]);
+    }
+
+    const jobsUpdateQuery = `
+        UPDATE jobs
+        SET last_processed_at = NOW()
+        WHERE id = $1`;
+    await client.query(jobsUpdateQuery, [job_id]);
+
+    await client.query("COMMIT");
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+export async function getJobsToProcess() {
+  try {
+    const result = await query(
+      `
+        SELECT 
+            j.* 
+        FROM jobs j 
+        WHERE 
+            raw IS NOT NULL;
+        `
+    );
+    return { data: result.rows };
+  } catch (err: unknown) {
+    console.error("error querying jobs table:", err);
+    return { data: [], error: err };
+  }
+}
 
 interface JobResult extends Job {
   company_name: string;
