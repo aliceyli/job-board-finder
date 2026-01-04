@@ -18,7 +18,7 @@ async function processCompanyList() {
     process.cwd(),
     "src",
     "data",
-    "test_companies.csv"
+    "builtinnyc_companies.csv"
   );
 
   const csvHasHeader = true; // make sure csv file has header or first will be skipped
