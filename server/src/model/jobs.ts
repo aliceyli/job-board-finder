@@ -9,4 +9,5 @@ export interface Job {
   description: string;
   created_at: string;
   updated_at: string;
+  raw: string;
 }
