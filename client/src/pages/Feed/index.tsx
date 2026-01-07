@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { getJobs } from '../../lib/api';
 import { Job } from '../../types';
 import DOMPurify from 'dompurify';
@@ -10,6 +10,7 @@ export default function FeedPage() {
 
   const [jobs, setJobs] = useState<Job[]>([]);
   const [selectedJob, setSelectedJob] = useState<Job | undefined>();
+  const jobPreview = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     async function onLoad() {
@@ -18,6 +19,12 @@ export default function FeedPage() {
     }
     onLoad();
   }, []);
+
+  useEffect(() => {
+    if (jobPreview.current) {
+      jobPreview.current.scrollTop = 0;
+    }
+  }, [selectedJob]);
 
   function isEscapedHtml(input: string): boolean {
     return input.includes('&lt;') || input.includes('&gt;') || input.includes('&quot;');
@@ -40,29 +47,30 @@ export default function FeedPage() {
     <div className="page">
       <h1>Job Feed</h1>
       <div className={styles.JobFeedContainer}>
-        <div className={styles.JobList}>
-          <ul>
+        <div className={styles.JobColumn}>
+          <ul className={styles.JobList}>
             {jobs.length > 0
               ? jobs.map((job) => (
                   <li
+                    className={`${styles.JobCard} ${job === selectedJob ? styles.JobCardSelected : ''} `}
                     key={job.id}
                     onClick={(e) => {
                       setSelectedJob(job);
                     }}
                   >
-                    <div className="JobCard">
-                      <h3>{job.title}</h3>
-                      <div>Company: {job.company_name}</div>
-                      <div>Location: {job.location}</div>
-                      <a href={job.url}>View role</a>
-                    </div>
+                    <div className={styles.JobTitle}>{job.title}</div>
+                    <div>Company: {job.company_name}</div>
+                    <div>Location: {job.location}</div>
+                    <a href={job.url} className={styles.JobLink}>
+                      View role
+                    </a>
                   </li>
                 ))
               : 'No new jobs to review'}
           </ul>
         </div>
         {selectedJob && (
-          <div className={styles.JobPreview}>
+          <div className={styles.JobColumn} ref={jobPreview}>
             {safeHtmlDescription ? (
               <div
                 dangerouslySetInnerHTML={{

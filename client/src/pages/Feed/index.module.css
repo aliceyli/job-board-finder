@@ -4,13 +4,46 @@
   max-height: 80vh;
 }
 
-.JobList {
+.JobColumn {
   flex: 1;
-  outline: 1px solid white;
+  background-color: rgb(18, 18, 53);
   overflow: scroll;
+  scrollbar-width: none;
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid rgba(160, 160, 208, 0.2);
+  box-shadow: 1px 1px 2px 1px rgba(160, 160, 208, 0.2);
 }
 
-.JobPreview {
-  flex: 1;
+.JobList {
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.JobCard {
+  list-style-type: none;
+  margin: 0;
+  padding: 12px;
+  outline: 1px solid grey;
+  border-radius: 8px;
+}
+
+.JobCard:hover,
+.JobCardSelected {
+  cursor: pointer;
+  background-color: rgb(21, 21, 74);
   outline: 1px solid white;
+}
+
+.JobTitle {
+  font-size: 1.2em;
+  font-weight: bold;
+  margin-bottom: 6px;
+}
+
+.JobLink {
+  font-weight: bold;
 }

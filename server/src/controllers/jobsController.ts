@@ -190,23 +190,38 @@ export async function getJobsFeed(
   _req: Request,
   res: Response<JobsFeedResponse>
 ) {
-  // feed jobs should match preferences and should not be tagged with any label
-
-  // TO-DO: save preferences somewhere and generate the query dynamically
-  const TEST_PREFERENCE = {
-    title: ["engineer"],
-    location: ["new york", "ny"],
-  };
-
   try {
     const result = await query(
-      `SELECT j.*, c.name as company_name 
-      FROM jobs j 
-      JOIN companies c ON c.id = j.company_id 
-      WHERE 
-        j.title ILIKE '%engineer%' 
-        AND (j.location ILIKE '%ny%' OR j.location ILIKE '%new york%')
-        LIMIT 100;`
+      `SELECT
+    j.*,
+    c.name as company_name
+FROM jobs j
+JOIN companies c ON c.id = j.company_id
+WHERE
+    (
+        title ilike '%engineer%'
+        OR title like '%SWE%'
+        OR title ilike '%software%'
+        OR title ilike '%developer%'
+    ) AND (
+        location ilike '%new york%'
+        OR location ilike '%nyc%'
+        OR location ilike '%brooklyn%'
+    ) AND (
+        title NOT ilike '%intern%'
+        AND title NOT ilike '%university%'
+        AND title NOT ilike '%new grad%'
+        AND title NOT ilike '%lead%'
+        AND title NOT ilike '%senior%'
+        AND title NOT ilike '%sr.%'
+        AND title NOT ilike '%staff%'
+        AND title NOT ilike '%principal%'
+        AND title NOT ilike '%director%'
+        AND title NOT ilike '%vp%'
+        AND title NOT ilike '%vice president%'
+        AND title NOT ilike '%head of%'
+        AND title NOT ilike '%manager%'
+    )`
     );
     res.json({ data: result.rows });
   } catch (err) {
