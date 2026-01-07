@@ -10,15 +10,17 @@ export default function FeedPage() {
 
   const [jobs, setJobs] = useState<Job[]>([]);
   const [selectedJob, setSelectedJob] = useState<Job | undefined>();
+  const [pageNum, setPageNum] = useState<number>(1);
+
   const jobPreview = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    async function onLoad() {
-      const jobsData: Job[] = await getJobs();
+    async function updateJobFeed() {
+      const jobsData: Job[] = await getJobs(pageNum, 5);
       setJobs(jobsData);
     }
-    onLoad();
-  }, []);
+    updateJobFeed();
+  }, [pageNum]);
 
   useEffect(() => {
     if (jobPreview.current) {
@@ -43,11 +45,19 @@ export default function FeedPage() {
 
   const safeHtmlDescription = safeDecodeHtmlEntities(selectedJob?.description || '');
 
+  function next() {
+    setPageNum((prev) => prev + 1);
+  }
+
   return (
     <div className="page">
       <h1>Job Feed</h1>
       <div className={styles.JobFeedContainer}>
         <div className={styles.JobColumn}>
+          <div className={styles.Pagination}>
+            <div>page {pageNum}</div>
+            <button onClick={next}>next</button>
+          </div>
           <ul className={styles.JobList}>
             {jobs.length > 0
               ? jobs.map((job) => (

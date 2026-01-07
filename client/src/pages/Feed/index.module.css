@@ -47,3 +47,10 @@
 .JobLink {
   font-weight: bold;
 }
+
+.Pagination {
+  display: flex;
+  margin-bottom: 12px;
+  gap: 6px;
+  justify-content: flex-end;
+}

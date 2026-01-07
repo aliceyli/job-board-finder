@@ -11,6 +11,6 @@ app.get("/connections", getAllConnections);
 
 app.get("/companies", getAllCompanies);
 
-app.get("/jobsFeed", getJobsFeed);
+app.post("/jobsFeed", getJobsFeed);
 
 export default app;

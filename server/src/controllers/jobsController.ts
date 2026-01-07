@@ -184,12 +184,19 @@ interface JobResult extends Job {
   company_name: string;
 }
 
+type JobsFeedRequest = {
+  pageNum: number;
+  resultsPerPage: number;
+};
 type JobsFeedResponse = { data: JobResult[] };
 
 export async function getJobsFeed(
-  _req: Request,
+  req: Request<JobsFeedRequest>,
   res: Response<JobsFeedResponse>
 ) {
+  const { body } = req;
+  const { pageNum, resultsPerPage } = body;
+
   try {
     const result = await query(
       `SELECT
@@ -221,7 +228,8 @@ WHERE
         AND title NOT ilike '%vice president%'
         AND title NOT ilike '%head of%'
         AND title NOT ilike '%manager%'
-    )`
+    ) AND j.description IS NOT NULL
+    LIMIT ${resultsPerPage} OFFSET ${(pageNum - 1) * resultsPerPage}`
     );
     res.json({ data: result.rows });
   } catch (err) {
