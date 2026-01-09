@@ -184,54 +184,104 @@ interface JobResult extends Job {
   company_name: string;
 }
 
+type PageNum = number;
+type ResultsPerPage = number;
 type JobsFeedRequest = {
-  pageNum: number;
-  resultsPerPage: number;
+  pageNum?: PageNum;
+  resultsPerPage?: ResultsPerPage;
+  titleQuery?: string;
+  minYears?: string;
 };
-type JobsFeedResponse = { data: JobResult[] };
+type JobsFeedResponseData = {
+  pageNum: PageNum;
+  resultsPerPage: ResultsPerPage;
+  resultsCount: number;
+  results: JobResult[];
+};
+type JobsFeedResponse = {
+  data: JobsFeedResponseData;
+};
 
 export async function getJobsFeed(
   req: Request<JobsFeedRequest>,
   res: Response<JobsFeedResponse>
 ) {
+  const DEFAULT_RESULTS_PER_PAGE = 5;
+  const DEFAULT_START_PAGE = 1;
+
   const { body } = req;
-  const { pageNum, resultsPerPage } = body;
+  const { pageNum, resultsPerPage, titleQuery, minYears } = body;
+  const limit = Number(resultsPerPage) || DEFAULT_RESULTS_PER_PAGE;
+  const page = Number(pageNum) || DEFAULT_START_PAGE;
+  const offset = (page - 1) * limit;
+
+  const whereClauses: string[] = [
+    `(title ilike '%engineer%' OR title ilike '%SWE%' OR title ilike '%software%' OR title ilike '%developer%')`,
+    `(location ilike '%new york%' OR location ilike '%nyc%' OR location ilike '%brooklyn%')`,
+    `(title NOT ilike '%intern%' AND title NOT ilike '%university%' AND title NOT ilike '%new grad%' AND title NOT ilike '%lead%' AND title NOT ilike '%senior%' AND title NOT ilike '%sr.%' AND title NOT ilike '%staff%' AND title NOT ilike '%principal%' AND title NOT ilike '%director%' AND title NOT ilike '%vp%' AND title NOT ilike '%vice president%' AND title NOT ilike '%head of%' AND title NOT ilike '%manager%')`,
+    `j.description IS NOT NULL`,
+  ];
+
+  const params: Array<string | number> = [];
+
+  if (titleQuery) {
+    whereClauses.push(`title ilike $${params.length + 1}`);
+    params.push(`%${titleQuery}%`);
+  }
+
+  if (minYears) {
+    whereClauses.push(`j.description ~* $${params.length + 1}`);
+
+    const regex = `\\m${minYears}[\\w.+-]*\\s+years?.{0,60}experience\\y`;
+    params.push(regex);
+  }
+
+  function getQueryString(select: string) {
+    return `SELECT
+            ${select}
+        FROM jobs j
+        JOIN companies c ON c.id = j.company_id
+        WHERE ${whereClauses.join("\n    AND ")}`;
+  }
 
   try {
-    const result = await query(
-      `SELECT
-    j.*,
-    c.name as company_name
-FROM jobs j
-JOIN companies c ON c.id = j.company_id
-WHERE
-    (
-        title ilike '%engineer%'
-        OR title like '%SWE%'
-        OR title ilike '%software%'
-        OR title ilike '%developer%'
-    ) AND (
-        location ilike '%new york%'
-        OR location ilike '%nyc%'
-        OR location ilike '%brooklyn%'
-    ) AND (
-        title NOT ilike '%intern%'
-        AND title NOT ilike '%university%'
-        AND title NOT ilike '%new grad%'
-        AND title NOT ilike '%lead%'
-        AND title NOT ilike '%senior%'
-        AND title NOT ilike '%sr.%'
-        AND title NOT ilike '%staff%'
-        AND title NOT ilike '%principal%'
-        AND title NOT ilike '%director%'
-        AND title NOT ilike '%vp%'
-        AND title NOT ilike '%vice president%'
-        AND title NOT ilike '%head of%'
-        AND title NOT ilike '%manager%'
-    ) AND j.description IS NOT NULL
-    LIMIT ${resultsPerPage} OFFSET ${(pageNum - 1) * resultsPerPage}`
-    );
-    res.json({ data: result.rows });
+    const client = await pool.connect();
+
+    try {
+      await client.query("BEGIN");
+
+      const result = await client.query(
+        `${getQueryString(`
+            j.*,
+            c.name as company_name
+        `)}
+        LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+        [...params, limit, offset]
+      );
+      const { rows: resultRows } = result;
+
+      const totalCountResult = await client.query(getQueryString(`count(*)`), [
+        ...params,
+      ]);
+      const { rows: countRows } = totalCountResult;
+      const totalCount = countRows[0].count;
+
+      await client.query("COMMIT");
+
+      res.json({
+        data: {
+          pageNum,
+          resultsPerPage: limit,
+          resultsCount: totalCount,
+          results: resultRows,
+        },
+      });
+    } catch (err) {
+      await client.query("ROLLBACK");
+      throw err;
+    } finally {
+      client.release();
+    }
   } catch (err) {
     console.error("error:", err);
   }
