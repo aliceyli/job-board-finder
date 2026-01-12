@@ -24,7 +24,7 @@ export default function FeedPage() {
   const jobPreview = useRef<HTMLDivElement | null>(null);
 
   const { pageNum } = searchParams;
-  const totalPageCount = resultsPerPage > 0 ? Math.trunc(resultsCount / resultsPerPage) : 0;
+  const totalPageCount = resultsPerPage > 0 ? Math.ceil(resultsCount / resultsPerPage) : 0;
 
   useEffect(() => {
     async function onLoad() {
@@ -85,37 +85,54 @@ export default function FeedPage() {
   return (
     <div className="page">
       <h1>Job Feed</h1>
-      <div className={styles.filterBar}>
+      <div className={styles.FilterBar}>
         <form onSubmit={handleSearchSubmit}>
-          <label>
-            Search Title
+          <div className={styles.SearchRow}>
+            <div className={styles.SearchBar}>
+              <i className={`bi bi-search ${styles.Icon}`}></i>
+              <input
+                className={styles.SearchInput}
+                type="text"
+                placeholder="Job Title"
+                value={titleQueryInput}
+                onChange={(e) => setTitleQueryInput(e.target.value)}
+              />
+              <button className={styles.SearchButton} type="submit">
+                Search
+              </button>
+            </div>
             <input
-              type="text"
-              value={titleQueryInput}
-              onChange={(e) => setTitleQueryInput(e.target.value)}
-            />
-          </label>
-          <label>
-            Min Years Experience
-            <input
+              className={styles.FilterInput}
               type="number"
+              placeholder="Years Experience"
               min={0}
               step={1}
               value={minYearsInput}
               onChange={(e) => setMinYearsInput(e.target.value)}
+              aria-label="Years Experience Filter"
             />
-          </label>
-          <button type="submit">Search</button>
+          </div>
         </form>
       </div>
       <div className={styles.JobFeedContainer}>
         <div className={styles.JobColumn}>
-          <div className={styles.Pagination}>
-            {totalPageCount} pages
-            {resultsCount} results
-            {pageNum > FIRST_PAGE && <button onClick={prevPage}>prev</button>}
-            <div>page {pageNum}</div>
-            {pageNum <= totalPageCount && <button onClick={nextPage}>next</button>}
+          <div className={styles.PaginationBar}>
+            <div>{resultsCount} results</div>
+            <div className={styles.Pagination}>
+              {pageNum > FIRST_PAGE && (
+                <button onClick={prevPage}>
+                  <i className="bi bi-chevron-left"></i>
+                </button>
+              )}
+              <div>
+                page {pageNum} of {totalPageCount}
+              </div>
+              {pageNum < totalPageCount && (
+                <button onClick={nextPage}>
+                  <i className="bi bi-chevron-right"></i>
+                </button>
+              )}
+            </div>
           </div>
           <ul className={styles.JobList}>
             {jobs.length > 0
@@ -140,6 +157,11 @@ export default function FeedPage() {
         </div>
         {selectedJob && (
           <div className={styles.JobColumn} ref={jobPreview}>
+            <div className={styles.CloseButton}>
+              <button onClick={() => setSelectedJob(undefined)}>
+                <i className="bi bi-x-lg"></i>
+              </button>
+            </div>
             {safeHtmlDescription ? (
               <div
                 dangerouslySetInnerHTML={{

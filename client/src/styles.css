@@ -39,6 +39,16 @@ header {
   margin-bottom: 28px;
 }
 
+input,
+button {
+  font: inherit;
+  box-sizing: border-box;
+}
+
+input:focus {
+  outline: none;
+}
+
 .badge {
   display: inline-flex;
   align-items: center;

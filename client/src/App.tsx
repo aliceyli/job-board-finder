@@ -4,6 +4,7 @@ import CompaniesPage from './pages/Companies/index';
 import PreferencesPage from './pages/Preferences';
 import NavBar from './components/NavBar';
 import { AppRoute } from './domain/routes';
+import 'bootstrap-icons/font/bootstrap-icons.css';
 
 export default function App() {
   const routes: AppRoute[] = [
