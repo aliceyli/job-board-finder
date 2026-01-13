@@ -163,6 +163,7 @@ export async function insertOneJobMetadata(
 }
 
 export async function getJobsToProcess() {
+  // temp: test 100 jobs
   try {
     const result = await query(
       `
@@ -170,7 +171,8 @@ export async function getJobsToProcess() {
             j.* 
         FROM jobs j 
         WHERE 
-            raw IS NOT NULL;
+            raw IS NOT NULL
+        LIMIT 100;
         `
     );
     return { data: result.rows };

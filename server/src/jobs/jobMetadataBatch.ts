@@ -7,24 +7,11 @@ import path from "path";
 import fs from "fs";
 import { pool } from "../db";
 
+export const BATCH_JOB_DIR = path.join(process.cwd(), "src", "jobs", "results");
+export const BATCH_JOB_FOLDER_PREFIX = "batch_job_";
+export const BATCH_JOB_IDS_FILE_NAME = "_batch_ids";
+
 export const JobMetadataSchema = z.object({
-  level: z
-    .enum([
-      "Executive",
-      "Director",
-      "Manager",
-      "Principal",
-      "Staff",
-      "Senior",
-      "Mid Level",
-      "Entry Level",
-      "Internship",
-    ])
-    .nullable()
-    .default(null),
-  workPolicy: z.enum(["Remote", "Hybrid", "On-site"]).nullable().default(null),
-  yearsExperienceMin: z.number().nullable().default(null),
-  skillsRequired: z.array(z.string()).nullable().default(null),
   locationCities: z.array(z.string()).nullable().default(null),
   locationCountries: z.array(z.string()).nullable().default(null),
 });
@@ -34,7 +21,7 @@ export type JobMetadataParsedResponse = z.infer<typeof JobMetadataSchema>;
 function getRequestString(job_id: number, rawData: string) {
   const body = {
     model: "gpt-5-nano",
-    input: `Extract the job post information from the following text (skills should not be more than a word or 2 and focus on programming languages and skills like react, aws, etc.; city and country location should be spelled out, not abbreviated):\n\n${rawData}`,
+    input: `Extract the location information from the following text (city and country location should be spelled out and normalized, not abbreviated):\n\n${rawData}`,
     text: {
       format: zodTextFormat(JobMetadataSchema, "jobMetadata"),
     },
@@ -59,16 +46,41 @@ function createBatchFile(jobs: Job[], batchPath: string) {
       });
 
     for (const job of jobs) {
-      const { id, title, location, team, description } = job;
-      const jobObject = { title, location, team, description };
+      const { id, location } = job;
+      const jobObject = { location };
 
       const requestString = getRequestString(id, JSON.stringify(jobObject));
-      console.log(`writing request for job ${id}`);
       writer.write(`${requestString}\n`);
     }
 
     writer.end();
   });
+}
+
+async function createBatch(
+  batchJobs: Job[],
+  batchPath: string,
+  openai: OpenAI
+) {
+  try {
+    await createBatchFile(batchJobs, batchPath);
+
+    const file = await openai.files.create({
+      file: fs.createReadStream(batchPath),
+      purpose: "batch",
+    });
+
+    const batch = await openai.batches.create({
+      input_file_id: file.id,
+      endpoint: "/v1/responses",
+      completion_window: "24h",
+    });
+
+    return batch.id;
+  } catch (err) {
+    console.error("Error creating batch", err);
+    return;
+  }
 }
 
 async function main() {
@@ -80,37 +92,58 @@ async function main() {
   await pool.end();
   const { data: jobs, error } = jobResults;
 
-  if (jobs.length === 0 || error) {
-    return;
+  if (jobs.length === 0) {
+    throw new Error("No jobs to process");
+  }
+  if (error) {
+    throw new Error(`Error getting jobs from db: ${error}`);
   }
 
+  console.log(`Pulled ${jobs.length} jobs to process`);
+
   const timestampId = Date.now().toString();
-
-  const batchPath = path.join(
-    process.cwd(),
-    "src",
-    "jobs",
-    "results",
-    `batch_job_requests_${timestampId}.jsonl`
+  const dirPath = path.join(
+    BATCH_JOB_DIR,
+    `${BATCH_JOB_FOLDER_PREFIX}${timestampId}`
   );
-
-  await createBatchFile(jobs.slice(0, 100), batchPath);
-
-  // upload file to openai
-  const file = await openai.files.create({
-    file: fs.createReadStream(batchPath),
-    purpose: "batch",
-  });
-  console.log({ file });
-
-  // create batch
-  const batch = await openai.batches.create({
-    input_file_id: file.id,
-    endpoint: "/v1/responses",
-    completion_window: "24h",
+  fs.mkdir(dirPath, (err) => {
+    if (err) {
+      throw new Error(`Error creating directory: ${err}`);
+    }
+    console.log("Created results directory");
   });
 
-  console.log({ batch });
+  const batchIdsPath = path.join(dirPath, BATCH_JOB_IDS_FILE_NAME);
+  const batchIdsStream = fs.createWriteStream(batchIdsPath, {
+    flags: "a",
+    encoding: "utf8",
+  });
+  let fileNum = 1;
+  let idx = 0;
+
+  while (idx < jobs.length) {
+    const start = idx;
+    const end = Math.min(idx + 1000, jobs.length);
+    const batchJobs = jobs.slice(start, end);
+    const batchPath = path.join(dirPath, `batch_job_requests_${fileNum}.jsonl`);
+
+    const batchId = await createBatch(batchJobs, batchPath, openai);
+
+    if (batchId) {
+      batchIdsStream.write(`${batchId}\n`);
+      console.log(`Wrote batchID for jobs ${start} to ${end}`);
+    } else {
+      console.log(`Error: did not receive batchId for jobs ${start} to ${end}`);
+    }
+
+    fileNum++;
+    idx = end;
+  }
+
+  batchIdsStream.end();
+  console.log("Finished batching jobs");
 }
 
-main();
+if (require.main === module) {
+  main();
+}
